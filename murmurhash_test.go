@@ -1,4 +1,4 @@
-package murmurhash
+package murmur
 
 import (
 	"bytes"
