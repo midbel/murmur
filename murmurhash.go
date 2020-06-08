@@ -56,17 +56,16 @@ func (m *murmur128x64v3) Write(bs []byte) (int, error) {
 		bs, m.offset = bs[i:], 0
 	}
 
-	blocks := len(bs) / sizeBlock128
 	var (
-		i int
-		n = blocks * sizeBlock128
+		blocks = len(bs)/sizeBlock128
+		written int
 	)
-	for i < n {
-		m.calculateBlock(bs[i:])
-		i += sizeBlock128
+	for i := 0; i < blocks; i++ {
+		m.calculateBlock(bs[i*sizeBlock128:])
+		written += sizeBlock128
 	}
-	if diff := length - blocks; diff > 0 {
-		m.offset = copy(m.buffer[0:], bs[i:])
+	if diff := len(bs)-written; diff > 0 {
+		m.offset = copy(m.buffer[0:], bs[written:])
 	}
 	return length, nil
 }
@@ -75,6 +74,7 @@ func (m *murmur128x64v3) Reset() {
 	m.hash1 = m.seed
 	m.hash2 = m.seed
 	m.offset = 0
+	m.written = 0
 }
 
 func (m *murmur128x64v3) Sum(bs []byte) []byte {
@@ -224,17 +224,16 @@ func (m *murmur128x86v3) Write(bs []byte) (int, error) {
 		bs, m.offset = bs[i:], 0
 	}
 
-	blocks := len(bs) / sizeBlock128
 	var (
-		i int
-		n = blocks * sizeBlock128
+		blocks = len(bs)/sizeBlock128
+		written int
 	)
-	for i < n {
-		m.calculateBlock(bs[i:])
-		i += sizeBlock128
+	for i := 0; i < blocks; i++ {
+		m.calculateBlock(bs[i*sizeBlock128:])
+		written += sizeBlock128
 	}
-	if diff := length - blocks; diff > 0 {
-		m.offset = copy(m.buffer[0:], bs[i:])
+	if diff := len(bs)-written; diff > 0 {
+		m.offset = copy(m.buffer[0:], bs[written:])
 	}
 	return length, nil
 }
@@ -245,6 +244,7 @@ func (m *murmur128x86v3) Reset() {
 	m.hash3 = m.seed
 	m.hash4 = m.seed
 	m.offset = 0
+	m.written = 0
 }
 
 func (m *murmur128x86v3) Sum(bs []byte) []byte {
@@ -433,17 +433,16 @@ func (m *murmur32x86v3) Write(bs []byte) (int, error) {
 		bs, m.offset = bs[i:], 0
 	}
 
-	blocks := len(bs) / sizeBlock32
 	var (
-		i int
-		n = blocks * sizeBlock32
+		blocks = len(bs)/sizeBlock32
+		written int
 	)
-	for i < n {
-		m.calculateBlock(bs[i:])
-		i += sizeBlock32
+	for i := 0; i < blocks; i++ {
+		m.calculateBlock(bs[i*sizeBlock32:])
+		written += sizeBlock32
 	}
-	if diff := length - blocks; diff > 0 {
-		m.offset = copy(m.buffer[0:], bs[i:])
+	if diff := len(bs)-written; diff > 0 {
+		m.offset = copy(m.buffer[0:], bs[written:])
 	}
 	return length, nil
 }
@@ -451,6 +450,7 @@ func (m *murmur32x86v3) Write(bs []byte) (int, error) {
 func (m *murmur32x86v3) Reset() {
 	m.digest = m.seed
 	m.offset = 0
+	m.written = 0
 }
 
 func (m *murmur32x86v3) Sum32() uint32 {
