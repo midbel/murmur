@@ -2,6 +2,7 @@ package murmur
 
 import (
 	"encoding/binary"
+	"fmt"
 	"hash"
 	"math/bits"
 )
@@ -22,6 +23,14 @@ const (
 	two32x86 = 0x1b873593
 )
 
+const (
+	size32  = 32
+	size128 = 128
+	arch64  = 64
+	arch86  = 64
+	version = 3
+)
+
 type murmur128x64v3 struct {
 	buffer  [sizeBlock128]byte
 	offset  int
@@ -37,6 +46,45 @@ func Murmur128x64v3(seed uint64) hash.Hash {
 	m.seed = seed
 	m.Reset()
 	return &m
+}
+
+func (m *murmur128x64v3) MarshalBinary() ([]byte, error) {
+	buf := make([]byte, 51)
+	buf[0] = byte(version)
+	buf[1] = byte(arch64)
+	buf[2] = byte(size128)
+
+	binary.BigEndian.PutUint64(buf[3:], m.hash1)
+	binary.BigEndian.PutUint64(buf[11:], m.hash2)
+	binary.BigEndian.PutUint64(buf[19:], m.seed)
+
+	copy(buf[27:], m.buffer[:])
+	binary.BigEndian.PutUint64(buf[35:], uint64(m.offset))
+	binary.BigEndian.PutUint64(buf[43:], uint64(m.written))
+
+	return buf, nil
+}
+
+func (m *murmur128x64v3) UnmarshalBinary(buf []byte) error {
+	if len(buf) != 51 {
+		return fmt.Errorf("invalid hash length")
+	}
+
+	if version != buf[0] {
+		return fmt.Errorf("invalid hash state: version mismatched!")
+	}
+	if buf[1] != arch86 && buf[2] != size128 {
+		return fmt.Errorf("invalid hash state: arch/size mismatched!")
+	}
+	m.hash1 = binary.BigEndian.Uint64(buf[3:])
+	m.hash2 = binary.BigEndian.Uint64(buf[11:])
+	m.seed = binary.BigEndian.Uint64(buf[19:])
+
+	copy(m.buffer[:], buf[27:])
+	m.offset = int(binary.BigEndian.Uint64(buf[35:]))
+	m.written = int(binary.BigEndian.Uint64(buf[43:]))
+
+	return nil
 }
 
 func (m *murmur128x64v3) Size() int { return sizeBlock128 }
@@ -57,14 +105,14 @@ func (m *murmur128x64v3) Write(bs []byte) (int, error) {
 	}
 
 	var (
-		blocks = len(bs)/sizeBlock128
+		blocks  = len(bs) / sizeBlock128
 		written int
 	)
 	for i := 0; i < blocks; i++ {
 		m.calculateBlock(bs[i*sizeBlock128:])
 		written += sizeBlock128
 	}
-	if diff := len(bs)-written; diff > 0 {
+	if diff := len(bs) - written; diff > 0 {
 		m.offset = copy(m.buffer[0:], bs[written:])
 	}
 	return length, nil
@@ -207,6 +255,50 @@ func Murmur128x86v3(seed uint32) hash.Hash {
 	return &m
 }
 
+func (m *murmur128x86v3) MarshalBinary() ([]byte, error) {
+	buf := make([]byte, 47)
+	buf[0] = byte(version)
+	buf[1] = byte(arch86)
+	buf[2] = byte(size128)
+
+	binary.BigEndian.PutUint32(buf[3:], m.hash1)
+	binary.BigEndian.PutUint32(buf[7:], m.hash2)
+	binary.BigEndian.PutUint32(buf[11:], m.hash3)
+	binary.BigEndian.PutUint32(buf[15:], m.hash4)
+	binary.BigEndian.PutUint32(buf[19:], m.seed)
+
+	copy(buf[23:], m.buffer[:])
+	binary.BigEndian.PutUint64(buf[31:], uint64(m.offset))
+	binary.BigEndian.PutUint64(buf[39:], uint64(m.written))
+
+	return buf, nil
+}
+
+func (m *murmur128x86v3) UnmarshalBinary(buf []byte) error {
+	if len(buf) != 47 {
+		return fmt.Errorf("invalid hash length")
+	}
+
+	if version != buf[0] {
+		return fmt.Errorf("invalid hash state: version mismatched!")
+	}
+	if buf[1] != arch86 && buf[2] != size128 {
+		return fmt.Errorf("invalid hash state: arch/size mismatched!")
+	}
+
+	m.hash1 = binary.BigEndian.Uint32(buf[3:])
+	m.hash2 = binary.BigEndian.Uint32(buf[7:])
+	m.hash3 = binary.BigEndian.Uint32(buf[11:])
+	m.hash4 = binary.BigEndian.Uint32(buf[15:])
+	m.seed = binary.BigEndian.Uint32(buf[19:])
+
+	copy(m.buffer[:], buf[23:])
+	m.offset = int(binary.BigEndian.Uint64(buf[31:]))
+	m.written = int(binary.BigEndian.Uint64(buf[39:]))
+
+	return nil
+}
+
 func (m *murmur128x86v3) Size() int { return sizeBlock128 }
 
 func (m *murmur128x86v3) BlockSize() int { return sizeBlock128 }
@@ -225,14 +317,14 @@ func (m *murmur128x86v3) Write(bs []byte) (int, error) {
 	}
 
 	var (
-		blocks = len(bs)/sizeBlock128
+		blocks  = len(bs) / sizeBlock128
 		written int
 	)
 	for i := 0; i < blocks; i++ {
 		m.calculateBlock(bs[i*sizeBlock128:])
 		written += sizeBlock128
 	}
-	if diff := len(bs)-written; diff > 0 {
+	if diff := len(bs) - written; diff > 0 {
 		m.offset = copy(m.buffer[0:], bs[written:])
 	}
 	return length, nil
@@ -416,6 +508,43 @@ func Murmur32x86v3(seed uint32) hash.Hash32 {
 	return &m
 }
 
+func (m *murmur32x86v3) MarshalBinary() ([]byte, error) {
+	buf := make([]byte, 31)
+	buf[0] = byte(version)
+	buf[1] = byte(arch86)
+	buf[2] = byte(size32)
+
+	binary.BigEndian.PutUint32(buf[3:], m.digest)
+	binary.BigEndian.PutUint32(buf[7:], m.seed)
+	copy(buf[11:], m.buffer[:])
+	binary.BigEndian.PutUint64(buf[15:], uint64(m.offset))
+	binary.BigEndian.PutUint64(buf[23:], uint64(m.written))
+
+	return buf, nil
+}
+
+func (m *murmur32x86v3) UnmarshalBinary(buf []byte) error {
+	if len(buf) != 31 {
+		return fmt.Errorf("invalid hash length")
+	}
+
+	if version != buf[0] {
+		return fmt.Errorf("invalid hash state: version mismatched!")
+	}
+	if buf[1] != arch86 && buf[2] != size32 {
+		return fmt.Errorf("invalid hash state: arch/size mismatched!")
+	}
+
+	m.digest = binary.BigEndian.Uint32(buf[3:])
+	m.seed = binary.BigEndian.Uint32(buf[7:])
+
+	copy(m.buffer[:], buf[11:])
+	m.offset = int(binary.BigEndian.Uint64(buf[15:]))
+	m.written = int(binary.BigEndian.Uint64(buf[23:]))
+
+	return nil
+}
+
 func (m *murmur32x86v3) Size() int { return sizeBlock32 }
 
 func (m *murmur32x86v3) BlockSize() int { return sizeBlock32 }
@@ -434,14 +563,14 @@ func (m *murmur32x86v3) Write(bs []byte) (int, error) {
 	}
 
 	var (
-		blocks = len(bs)/sizeBlock32
+		blocks  = len(bs) / sizeBlock32
 		written int
 	)
 	for i := 0; i < blocks; i++ {
 		m.calculateBlock(bs[i*sizeBlock32:])
 		written += sizeBlock32
 	}
-	if diff := len(bs)-written; diff > 0 {
+	if diff := len(bs) - written; diff > 0 {
 		m.offset = copy(m.buffer[0:], bs[written:])
 	}
 	return length, nil
